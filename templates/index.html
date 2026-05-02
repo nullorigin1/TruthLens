@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>TruthLens — Fake News Detector</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;0,9..144,900;1,9..144,700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Fira+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+
+    <style>
+        /* ── Variables ─────────────────────────────────────── */
+        :root {
+            --cream:      #f5f2ea;
+            --paper:      #fdfcf8;
+            --white:      #ffffff;
+            --ink:        #0e0d0b;
+            --ink2:       #2c2a25;
+            --muted:      #7a7670;
+            --border:     #ddd9cf;
+            --border2:    #c8c3b5;
+            --red:        #c0392b;
+            --red-light:  #fef2f2;
+            --red-mid:    rgba(192,57,43,0.12);
+            --green:      #1a6b4a;
+            --green-light:#f0fdf4;
+            --green-mid:  rgba(26,107,74,0.12);
+            --blue:       #1d4ed8;
+            --shadow-sm:  0 1px 3px rgba(14,13,11,0.06), 0 1px 2px rgba(14,13,11,0.04);
+            --shadow-md:  0 4px 16px rgba(14,13,11,0.08), 0 2px 6px rgba(14,13,11,0.05);
+            --shadow-lg:  0 20px 50px rgba(14,13,11,0.10), 0 8px 20px rgba(14,13,11,0.06);
+            --r-sm:       6px;
+            --r-md:       12px;
+            --r-lg:       18px;
+        }
+
+        /* ── Reset ─────────────────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            background-color: var(--cream);
+            color: var(--ink);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 400;
+            min-height: 100vh;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* ── Subtle dot grid background ─────────────────────── */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: radial-gradient(circle, rgba(14,13,11,0.07) 1px, transparent 1px);
+            background-size: 28px 28px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ── Layout wrapper ────────────────────────────────── */
+        .wrapper {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Header ─────────────────────────────────────────── */
+        header {
+            background: var(--white);
+            border-bottom: 2px solid var(--ink);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            animation: slideDown 0.55s cubic-bezier(0.22,1,0.36,1) both;
+        }
+
+        /* Red masthead stripe */
+        header::before {
+            content: '';
+            display: block;
+            height: 4px;
+            background: var(--red);
+            width: 100%;
+        }
+
+        .header-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.95rem 3rem;
+            max-width: 1100px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-110%); opacity: 0; }
+            to   { transform: translateY(0);     opacity: 1; }
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            text-decoration: none;
+        }
+        .logo-icon {
+            width: 36px; height: 36px;
+            background: var(--ink);
+            border-radius: var(--r-sm);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+        .logo-text {
+            font-family: 'Fraunces', serif;
+            font-size: 1.45rem;
+            font-weight: 900;
+            color: var(--ink);
+            letter-spacing: -0.03em;
+        }
+        .logo-text span { color: var(--red); }
+
+        .nav-badge {
+            font-family: 'Fira Mono', monospace;
+            font-size: 0.63rem;
+            letter-spacing: 0.1em;
+            color: var(--muted);
+            border: 1px solid var(--border);
+            padding: 0.3rem 0.8rem;
+            border-radius: 999px;
+            text-transform: uppercase;
+            background: var(--cream);
+        }
+
+        /* ── Hero ────────────────────────────────────────────── */
+        .hero {
+            padding: 5rem 3rem 3.5rem;
+            max-width: 1100px;
+            margin: 0 auto;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 2rem;
+            align-items: end;
+            animation: fadeUp 0.75s 0.2s cubic-bezier(0.22,1,0.36,1) both;
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(28px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .hero-left { display: flex; flex-direction: column; gap: 1.1rem; }
+
+        .eyebrow {
+            font-family: 'Fira Mono', monospace;
+            font-size: 0.68rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--red);
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            font-weight: 400;
+        }
+        .eyebrow-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--red);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.75); }
+        }
+
+        .hero-title {
+            font-family: 'Fraunces', serif;
+            font-size: clamp(3rem, 7.5vw, 6rem);
+            font-weight: 900;
+            line-height: 0.95;
+            letter-spacing: -0.04em;
+            color: var(--ink);
+        }
+        .hero-title em {
+            font-style: italic;
+            font-weight: 700;
+            color: var(--red);
+        }
+
+        .hero-sub {
+            font-size: 1.0rem;
+            color: var(--muted);
+            max-width: 440px;
+            line-height: 1.75;
+            font-weight: 400;
+            border-left: 3px solid var(--border2);
+            padding-left: 1rem;
+        }
+
+        /* ── Stats cluster (hero right) ─────────────────────── */
+        .stats-cluster {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            background: var(--ink);
+            border-radius: var(--r-md);
+            overflow: hidden;
+            flex-shrink: 0;
+            min-width: 160px;
+        }
+        .stat {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.15rem;
+            padding: 1.2rem 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .stat:last-child { border-bottom: none; }
+        .stat-value {
+            font-family: 'Fraunces', serif;
+            font-size: 1.9rem;
+            font-weight: 900;
+            color: var(--white);
+            letter-spacing: -0.04em;
+            line-height: 1;
+        }
+        .stat-label {
+            font-family: 'Fira Mono', monospace;
+            font-size: 0.6rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.4);
+        }
+        /* no divider needed — using stacked layout */
+        .stat-divider { display: none; }
+
+        /* ── Divider ─────────────────────────────────────────── */
+        .section-divider {
+            max-width: 1100px;
+            margin: 0 auto;
+            width: 100%;
+            padding: 0 3rem;
+        }
+        .section-divider hr {
+            border: none;
+            border-top: 1px solid var(--border);
+        }
+
+        /* ── Main area ────────────────────────────────────────── */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2.5rem 3rem 5rem;
+            max-width: 1100px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* ── Detector card ────────────────────────────────────── */
+        .card {
+            width: 100%;
+            max-width: 780px;
+            background: var(--white);
+            border: 2px solid var(--ink);
+            border-radius: var(--r-lg);
+            overflow: hidden;
+            box-shadow: 6px 6px 0 var(--ink);
+            animation: fadeUp 0.75s 0.35s cubic-bezier(0.22,1,0.36,1) both;
+            transition: box-shadow 0.25s ease, transform 0.25s ease;
+        }
+        .card:focus-within {
+            box-shadow: 8px 8px 0 var(--red);
+            transform: translate(-2px, -2px);
+        }
+
+        .card-header {
+            padding: 1.1rem 1.8rem;
+            border-bottom: 2px solid var(--ink);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--ink);
+        }
+        .card-header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+        }
+        .card-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .card-dot.red    { background: #ff5f57; }
+        .card-dot.yellow { background: #febc2e; }
+        .card-dot.green  { background: #28c840; }
+
+        .card-title {
+            font-family: 'Fira Mono', monospace;
+            font-size: 0.7rem;
+            letter-spacing: 0.1em;
+            color: rgba(255,255,255,0.4);
+            margin-left: 0.4rem;
+        }
+        .card-header-badge {
+            font-family: 'Fira Mono', monospace;
+            font-size: 0.6rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--red);
+            border: 1px solid rgba(192,57,43,0.5);
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            background: rgba(192,57,43,0.1);
+        }
+
+        /* ── Form ─────────────────────────────────────────────── */
+        .card-body { padding: 2rem 2rem 1.5rem; }
+
+        .field-label {
+            display: block;
+            font-family: 'Fira Mono', monospace;
+            font-size: 0.65rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 0.75rem;
+            font-weight: 400;
+        }
+
+        .textarea-wrap { position: relative; }
+
+        textarea {
+            width: 100%;
+            background: var(--cream);
+            border: 1.5px solid var(--border);
+            border-radius: var(--r-md);
+            color: var(--ink);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 400;
+            line-height: 1.75;
+            padding: 1.2rem 1.4rem;
+            resize: vertical;
+            min-height: 180px;
+            outline: none;
+            transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+            caret-color: var(--red);
+        }
+        textarea::placeholder { color: var(--muted); opacity: 0.6; }
+        textarea:focus {
+            border-color: var(--ink);
+            background: var(--white);
+            box-shadow: 0 0 0 3px rgba(14,13,11,0.07);
+        }
+
+        .char-count {
+            position: absolute;
+            bottom: 0.8rem;
+            right: 1rem;
+            font-family: 'Fira Mono', monospace;
+            font-size: 0.6rem;
+            color: var(--muted);
+            pointer-events: none;
+            transition: color 0.25s;
+            letter-spacing: 0.05em;
+        }
+
+        /* ── Card footer / submit ─────────────────────────────── */
+        .card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.25rem 2rem 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .hint {
+            font-size: 0.78rem;
+            color: var(--muted);
+            max-width: 300px;
+            line-height: 1.55;
+        }
+        .hint strong { color: var(--ink2); font-weight: 600; }
+
+        .btn-analyze {
+            position: relative;
+            background: var(--ink);
+            color: var(--white);
+            border: 2px solid var(--ink);
+            border-radius: var(--r-sm);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 600;
+            padding: 0.8rem 1.8rem;
+            cursor: pointer;
+            overflow: hidden;
+            letter-spacing: 0.01em;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-shrink: 0;
+            transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease, box-shadow 0.15s ease;
+            box-shadow: 3px 3px 0 var(--red);
+        }
+        .btn-analyze:hover {
+            background: var(--red);
+            border-color: var(--red);
+            transform: translate(-1px, -1px);
+            box-shadow: 4px 4px 0 var(--ink);
+        }
+        .btn-analyze:active {
+            transform: translate(0, 0);
+            box-shadow: 1px 1px 0 var(--ink);
+        }
+        .btn-icon { font-size: 0.95rem; }
+
+        /* ── Result display ────────────────────────────────────── */
+        .result-wrapper {
+            padding: 0 2rem 2rem;
+        }
+
+        .result-box {
+            border-radius: var(--r-md);
+            padding: 1.5rem 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 1.4rem;
+            border: 2px solid;
+            animation: resultPop 0.45s cubic-bezier(0.34,1.56,0.64,1) both;
+            position: relative;
+            overflow: hidden;
+        }
+        @keyframes resultPop {
+            from { opacity: 0; transform: scale(0.95) translateY(8px); }
+            to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .result-box.real {
+            background: var(--green-light);
+            border-color: var(--green);
+            box-shadow: 4px 4px 0 rgba(26,107,74,0.3);
+        }
+        .result-box.fake {
+            background: var(--red-light);
+            border-color: var(--red);
+            box-shadow: 4px 4px 0 rgba(192,57,43,0.3);
+        }
+
+        .result-emoji {
+            font-size: 2.2rem;
+            flex-shrink: 0;
+            animation: bounce 0.5s 0.1s cubic-bezier(0.34,1.56,0.64,1) both;
+        }
+        @keyframes bounce {
+            from { transform: scale(0.4); opacity: 0; }
+            to   { transform: scale(1);   opacity: 1; }
+        }
+
+        .result-content { flex: 1; }
+        .result-verdict {
+            font-family: 'Fraunces', serif;
+            font-size: 1.45rem;
+            font-weight: 900;
+            letter-spacing: -0.03em;
+            line-height: 1.15;
+        }
+        .result-verdict.real { color: var(--green); }
+        .result-verdict.fake { color: var(--red); }
+        .result-desc {
+            font-size: 0.82rem;
+            color: var(--muted);
+            margin-top: 0.3rem;
+            font-weight: 400;
+        }
+
+        .result-pill {
+            font-family: 'Fira Mono', monospace;
+            font-size: 0.62rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            padding: 0.4rem 1rem;
+            border-radius: 999px;
+            border: 1.5px solid;
+            flex-shrink: 0;
+            font-weight: 500;
+        }
+        .result-pill.real {
+            color: var(--green);
+            border-color: var(--green);
+            background: rgba(26,107,74,0.08);
+        }
+        .result-pill.fake {
+            color: var(--red);
+            border-color: var(--red);
+            background: rgba(192,57,43,0.08);
+        }
+
+        /* ── How it works ──────────────────────────────────────── */
+        .how-section {
+            width: 100%;
+            max-width: 780px;
+            margin-top: 3rem;
+            animation: fadeUp 0.75s 0.5s cubic-bezier(0.22,1,0.36,1) both;
+        }
+
+        .section-label {
+            font-family: 'Fira Mono', monospace;
+            font-size: 0.63rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+        .section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+
+        .step {
+            background: var(--white);
+            border: 1.5px solid var(--border);
+            padding: 1.5rem;
+            border-radius: var(--r-md);
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+            box-shadow: var(--shadow-sm);
+            transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
+        }
+        .step:hover {
+            border-color: var(--ink);
+            box-shadow: 3px 3px 0 var(--ink);
+            transform: translate(-1px, -1px);
+        }
+
+        .step-num {
+            font-family: 'Fraunces', serif;
+            font-size: 2.4rem;
+            font-weight: 900;
+            color: var(--cream);
+            -webkit-text-stroke: 1.5px var(--border2);
+            line-height: 1;
+            letter-spacing: -0.05em;
+        }
+        .step-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--ink);
+            letter-spacing: -0.01em;
+        }
+        .step-desc {
+            font-size: 0.78rem;
+            color: var(--muted);
+            line-height: 1.65;
+        }
+
+        /* ── Footer ──────────────────────────────────────────────── */
+        footer {
+            text-align: center;
+            padding: 2rem 2rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.72rem;
+            color: var(--muted);
+            font-family: 'Fira Mono', monospace;
+            letter-spacing: 0.05em;
+            animation: fadeUp 0.75s 0.65s cubic-bezier(0.22,1,0.36,1) both;
+            background: var(--white);
+        }
+        footer span { color: var(--red); }
+
+        /* ── Scrollbar ──────────────────────────────────────────── */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--cream); }
+        ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+        /* ── Responsive ─────────────────────────────────────────── */
+        @media (max-width: 768px) {
+            .header-inner { padding: 0.95rem 1.5rem; }
+            .nav-badge { display: none; }
+            .hero {
+                padding: 3.5rem 1.5rem 2.5rem;
+                grid-template-columns: 1fr;
+            }
+            .stats-cluster {
+                flex-direction: row;
+                min-width: unset;
+                width: 100%;
+            }
+            .stat {
+                flex: 1;
+                border-bottom: none;
+                border-right: 1px solid rgba(255,255,255,0.08);
+                padding: 1rem;
+            }
+            .stat:last-child { border-right: none; }
+            .main { padding: 2rem 1.5rem 4rem; }
+            .card-body, .card-footer, .result-wrapper { padding-left: 1.25rem; padding-right: 1.25rem; }
+            .card-footer { flex-direction: column; align-items: flex-start; }
+            .btn-analyze { width: 100%; justify-content: center; }
+            .steps { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 480px) {
+            .hero-title { font-size: 2.6rem; }
+            .stats-cluster { flex-direction: column; }
+            .stat { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrapper">
+
+        <!-- ── Header ── -->
+        <header>
+            <div class="header-inner">
+                <a class="logo" href="#">
+                    <div class="logo-icon">🔍</div>
+                    <span class="logo-text">Truth<span>Lens</span></span>
+                </a>
+                <div class="nav-badge">AI-Powered Verification</div>
+            </div>
+        </header>
+
+        <!-- ── Hero ── -->
+        <section class="hero">
+            <div class="hero-left">
+                <div class="eyebrow">
+                    <span class="eyebrow-dot"></span>
+                    Powered by MIKE
+                </div>
+                <h1 class="hero-title">Can you trust<br/><em>what you read?</em></h1>
+                <p class="hero-sub">
+                    Paste any news article or headline and our model will
+                    instantly analyze it for authenticity.
+                </p>
+            </div>
+
+            <!-- Stats cluster -->
+            <div class="stats-cluster">
+                <div class="stat">
+                    <span class="stat-value">98%</span>
+                    <span class="stat-label">Accuracy</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value">44K+</span>
+                    <span class="stat-label">Articles Trained</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value">&lt;1s</span>
+                    <span class="stat-label">Detection Time</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── Main Detector Card ── -->
+        <main class="main">
+            <div class="card">
+
+                <!-- Card header -->
+                <div class="card-header">
+                    <div class="card-header-left">
+                        <span class="card-dot red"></span>
+                        <span class="card-dot yellow"></span>
+                        <span class="card-dot green"></span>
+                        <span class="card-title">news-analyzer.py — analyze</span>
+                    </div>
+                    <span class="card-header-badge">Live</span>
+                </div>
+
+                <!-- Form — method/action unchanged from original logic -->
+                <form method="POST">
+
+                    <div class="card-body">
+                        <label class="field-label" for="news">
+                            Paste your article or headline
+                        </label>
+                        <div class="textarea-wrap">
+                            <textarea
+                                id="news"
+                                name="news"
+                                rows="6"
+                                placeholder="e.g. Scientists discover new planet capable of supporting life…"
+                                oninput="updateCount(this)"
+                            ></textarea>
+                            <span class="char-count" id="charCount">0 chars</span>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <p class="hint">
+                            <strong>Tip:</strong> For best results, paste the full article or
+                            at least a few sentences.
+                        </p>
+                        <button type="submit" class="btn-analyze">
+                            <span class="btn-icon">⚡</span>
+                            Analyze Now
+                        </button>
+                    </div>
+
+                </form>
+
+                <!-- ── Result block (rendered by Flask template engine) ── -->
+                {% if prediction %}
+                <div class="result-wrapper">
+                    <div class="result-box {% if 'Real' in prediction %}real{% else %}fake{% endif %}">
+                        <div class="result-emoji">
+                            {% if 'Real' in prediction %}✅{% else %}❌{% endif %}
+                        </div>
+                        <div class="result-content">
+                            <div class="result-verdict {% if 'Real' in prediction %}real{% else %}fake{% endif %}">
+                                {% if 'Real' in prediction %}Real News Detected{% else %}Fake News Detected{% endif %}
+                            </div>
+                            <div class="result-desc">
+                                {% if 'Real' in prediction %}
+                                    This content appears to be credible and authentic.
+                                {% else %}
+                                    This content shows patterns associated with misinformation.
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="result-pill {% if 'Real' in prediction %}real{% else %}fake{% endif %}">
+                            {% if 'Real' in prediction %}Verified{% else %}Suspicious{% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+            </div><!-- /.card -->
+
+            <!-- ── How it works ── -->
+            <div class="how-section">
+                <div class="section-label">How it works</div>
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-num">01</div>
+                        <div class="step-title">Input Text</div>
+                        <div class="step-desc">Paste any news article, headline, or paragraph into the analyzer.</div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">02</div>
+                        <div class="step-title">Vectorization</div>
+                        <div class="step-desc">Your text is transformed into numerical features using a trained TF-IDF vectorizer.</div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">03</div>
+                        <div class="step-title">Prediction</div>
+                        <div class="step-desc">A Passive Aggressive Classifier instantly classifies the article as Real or Fake.</div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- ── Footer ── -->
+        <footer>
+            Built By <span>Jamil</span> · TruthLens Fake News Detector · ML-Powered
+        </footer>
+
+    </div><!-- /.wrapper -->
+
+    <script>
+        /* ─── Character counter ─────────────────────────────── */
+        function updateCount(el) {
+            const n = el.value.length;
+            const counter = document.getElementById('charCount');
+            counter.textContent = n.toLocaleString() + ' char' + (n !== 1 ? 's' : '');
+            counter.style.color = n > 2000 ? '#c0392b' : '';
+        }
+
+        /* ─── Stagger-in the steps on scroll ───────────────── */
+        const steps = document.querySelectorAll('.step');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry, i) => {
+                if (entry.isIntersecting) {
+                    entry.target.style.animationDelay = `${i * 80}ms`;
+                    entry.target.classList.add('visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.15 });
+        steps.forEach(s => {
+            s.style.opacity = '0';
+            s.style.transform = 'translateY(18px)';
+            s.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            observer.observe(s);
+        });
+
+        /* Trigger visible */
+        document.addEventListener('DOMContentLoaded', () => {
+            steps.forEach((s, i) => {
+                setTimeout(() => {
+                    s.style.opacity = '';
+                    s.style.transform = '';
+                }, 600 + i * 100);
+            });
+        });
+
+        /* ─── Button loading state ──────────────────────────── */
+        document.querySelector('form').addEventListener('submit', function () {
+            const btn = this.querySelector('.btn-analyze');
+            btn.innerHTML = '<span class="btn-icon" style="animation:spin 0.7s linear infinite;display:inline-block">⟳</span> Analyzing…';
+            btn.disabled = true;
+            btn.style.opacity = '0.75';
+        });
+    </script>
+
+    <style>
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</body>
+</html>

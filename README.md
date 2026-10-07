@@ -285,7 +285,7 @@ Feedback, suggestions, and discussions about AI applications in media integrity 
 
 ---
 
-## 12. Author
+## Author
 
 **Jamil Mahida**
 
